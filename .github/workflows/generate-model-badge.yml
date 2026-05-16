@@ -1,0 +1,78 @@
+name: Generate Model Badge
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'tst/**'
+  workflow_dispatch:
+
+jobs:
+  generate-model-badge:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install capellambse
+        run: |
+          pip install capellambse
+      
+      - name: Generate complexity badge
+        run: |
+          python - <<EOF
+          import capellambse
+          import json
+          
+          try:
+              # Load the Capella model
+              model = capellambse.MelodyModel('tst')
+              
+              # Calculate complexity metrics
+              total_elements = len(list(model.search('*')))
+              
+              # Create badge data in shields.io format
+              badge_data = {
+                  "schemaVersion": 1,
+                  "label": "complexity",
+                  "message": f"{total_elements} elements",
+                  "color": "blue"
+              }
+              
+              # Save badge data
+              with open('model-badge.json', 'w') as f:
+                  json.dump(badge_data, f, indent=2)
+              
+              print(f"✓ Generated badge: {total_elements} elements")
+              
+          except Exception as e:
+              print(f"✗ Error generating badge: {e}")
+              # Create a fallback badge
+              badge_data = {
+                  "schemaVersion": 1,
+                  "label": "complexity",
+                  "message": "unknown",
+                  "color": "lightgrey"
+              }
+              with open('model-badge.json', 'w') as f:
+                  json.dump(badge_data, f, indent=2)
+              raise
+          EOF
+      
+      - name: Display badge content
+        run: cat model-badge.json
+      
+      - name: Upload badge artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-badge
+          path: model-badge.json
+          retention-days: 90
+
+# Made with Bob
